@@ -3,7 +3,6 @@ import sys
 import sc2
 import numpy as np
 
-from sc2.position import Point2, Point3
 from sc2 import Race, Difficulty
 from sc2.constants import *
 from sc2.player import Bot, Computer
