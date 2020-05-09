@@ -1,8 +1,11 @@
 import os
 import sys
 import sc2
+import numpy as np
 
+from sc2.position import Point2, Point3
 from sc2 import Race, Difficulty
+from sc2.constants import *
 from sc2.player import Bot, Computer
 from sc2.unit import Unit
 from sc2.units import Units
@@ -25,9 +28,11 @@ class MyBot(sc2.BotAI):
         else:
             cc: Unit = ccs.first
 
-        await self.build_scv_supply()
+        # Starter build
+
         await self.build_gas_and_barrack()
-        await self.expand()
+        await self.build_scv_supply()
+        # await self.expand()
 
         # Saturate gas en scv
         for refinery in self.gas_buildings:
