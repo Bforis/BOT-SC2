@@ -1,89 +1,89 @@
 import os
 import sys
-import sc2
-import numpy as np
 
+import sc2
 from sc2 import Race, Difficulty
-from sc2.constants import *
 from sc2.player import Bot, Computer
+from sc2.ids.unit_typeid import UnitTypeId
 from sc2.unit import Unit
 from sc2.units import Units
 from sc2.position import Point2
-from sc2.ids.unit_typeid import UnitTypeId
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "../.."))
 
-uti = UnitTypeId
 
+class CyclonePush(sc2.BotAI):
+    def select_target(self) -> Point2:
+        # Pick a random enemy structure's position
+        targets = self.enemy_structures
+        if targets:
+            return targets.random.position
 
-class MyBot(sc2.BotAI):
+        # Pick a random enemy unit's position
+        targets = self.enemy_units
+        if targets:
+            return targets.random.position
+
+        # Pick enemy start location if it has no friendly units nearby
+        if min([unit.distance_to(self.enemy_start_locations[0]) for unit in self.units]) > 5:
+            return self.enemy_start_locations[0]
+
+        # Pick a random mineral field on the map
+        return self.mineral_field.random.position
+
     async def on_step(self, iteration):
-        ccs: Units = self.townhalls(uti.COMMANDCENTER)
-        if not ccs:
-            target: Point2 = self.enemy_structures.random_or(self.enemy_start_locations[0]).position
-            for unit in self.units(uti.MARINE):
+        CCs: Units = self.townhalls(UnitTypeId.COMMANDCENTER)
+        # If no command center exists, attack-move with all workers and cyclones
+        if not CCs:
+            target = self.structures.random_or(self.enemy_start_locations[0]).position
+            for unit in self.workers | self.units(UnitTypeId.CYCLONE):
                 unit.attack(target)
             return
         else:
-            cc: Unit = ccs.first
+            # Otherwise, grab the first command center from the list of command centers
+            cc: Unit = CCs.first
 
-        # Starter build
+        # Every 50 iterations (here: every 50*8 = 400 frames)
+        if iteration % 50 == 0 and self.units(UnitTypeId.CYCLONE).amount > 2:
+            target: Point2 = self.select_target()
+            forces: Units = self.units(UnitTypeId.CYCLONE)
+            # Every 4000 frames: send all forces to attack-move the target position
+            if iteration % 500 == 0:
+                for unit in forces:
+                    unit.attack(target)
+            # Every 400 frames: only send idle forces to attack the target position
+            else:
+                for unit in forces.idle:
+                    unit.attack(target)
 
-        await self.build_gas_and_barrack()
-        await self.build_scv_supply()
-        # await self.expand()
-
-        # Saturate gas en scv
-        for refinery in self.gas_buildings:
-            if refinery.assigned_harvesters < refinery.ideal_harvesters:
-                worker: Units = self.workers.closer_than(10, refinery)
-                if worker:
-                    worker.random.gather(refinery)
-
-        for scv in self.workers.idle:
-            scv.gather(self.mineral_field.closest_to(cc))
-
-    async def build_scv_supply(self):  # BUILD SCV AND SUPPLY
-        ccs: Units = self.townhalls(uti.COMMANDCENTER)
-        cc: Unit = ccs.first
-        # Train more SCVs
-        if self.can_afford(uti.SCV) and self.supply_workers < 18 and cc.is_idle:
-            cc.train(uti.SCV)
-
-        # Build more depots
-        elif (
-                self.supply_left < (
-                2 if self.structures(uti.BARRACKS).amount < 3 else 4) and self.supply_used >= 14
+        # While we have less than 22 workers: build more
+        # Check if we can afford them (by minerals and by supply)
+        if (
+                self.can_afford(UnitTypeId.SCV)
+                and self.supply_workers + self.already_pending(UnitTypeId.SCV) < 22
+                and cc.is_idle
         ):
-            if self.can_afford(uti.SUPPLYDEPOT) and self.already_pending(uti.SUPPLYDEPOT) < 2:
-                await self.build(uti.SUPPLYDEPOT, near=cc.position.towards(self.game_info.map_center, 5))
+            cc.train(UnitTypeId.SCV)
 
-        # Send idle workers to gather minerals near command center
-        for scv in self.workers.idle:
-            scv.gather(self.mineral_field.closest_to(cc))
+        # Build supply depots if we are low on supply, do not construct more than 2 at a time
+        elif self.supply_left < 3:
+            if self.can_afford(UnitTypeId.SUPPLYDEPOT) and self.already_pending(UnitTypeId.SUPPLYDEPOT) < 2:
+                # This picks a near-random worker to build a depot at location
+                # 'from command center towards game center, distance 8'
+                await self.build(UnitTypeId.SUPPLYDEPOT, near=cc.position.towards(self.game_info.map_center, 8))
 
-    async def expand(self):
-        # expand if we can afford and have less than 2 bases
-        if self.townhalls.amount < 2 and self.already_pending(uti.COMMANDCENTER) == 0 and self.can_afford(
-                uti.COMMANDCENTER):
-            await self.expand_now()
-
-    async def build_gas_and_barrack(self):
-        CCs: Units = self.townhalls(uti.COMMANDCENTER)
-        cc: Unit = CCs.first
-        # If we have supply depots (careful, lowered supply depots have a different UnitTypeId:
-        # UnitTypeId.SUPPLYDEPOTLOWERED)
-        if self.structures(uti.SUPPLYDEPOT):
+        # If we have supply depots (careful, lowered supply depots have a different UnitTypeId: UnitTypeId.SUPPLYDEPOTLOWERED)
+        if self.structures(UnitTypeId.SUPPLYDEPOT):
             # If we have no barracks
-            if not self.structures(uti.BARRACKS):
+            if not self.structures(UnitTypeId.BARRACKS):
                 # If we can afford barracks
-                if self.can_afford(uti.BARRACKS):
+                if self.can_afford(UnitTypeId.BARRACKS):
                     # Near same command as above with the depot
-                    await self.build(uti.BARRACKS, near=cc.position.towards(self.game_info.map_center, 8))
+                    await self.build(UnitTypeId.BARRACKS, near=cc.position.towards(self.game_info.map_center, 8))
 
             # If we have a barracks (complete or under construction) and less than 2 gas structures (here: refineries)
-            elif self.structures(uti.BARRACKS) and self.gas_buildings.amount < 1:
-                if self.can_afford(uti.REFINERY):
+            elif self.structures(UnitTypeId.BARRACKS) and self.gas_buildings.amount < 2:
+                if self.can_afford(UnitTypeId.REFINERY):
                     # All the vespene geysirs nearby, including ones with a refinery on top of it
                     vgs = self.vespene_geyser.closer_than(10, cc)
                     for vg in vgs:
@@ -96,15 +96,41 @@ class MyBot(sc2.BotAI):
                         if worker is None:
                             continue
                         # Issue the build command to the worker, important: vg has to be a Unit, not a position
-                        worker.build_gas(vg)
+                        worker.build(UnitTypeId.REFINERY, vg)
                         # Only issue one build geysir command per frame
                         break
+
+            # If we have at least one barracks that is compelted, build factory
+            if self.structures(UnitTypeId.BARRACKS).ready:
+                if self.structures(UnitTypeId.FACTORY).amount < 3 and not self.already_pending(UnitTypeId.FACTORY):
+                    if self.can_afford(UnitTypeId.FACTORY):
+                        position: Point2 = cc.position.towards_with_random_angle(self.game_info.map_center, 16)
+                        await self.build(UnitTypeId.FACTORY, near=position)
+
+        for factory in self.structures(UnitTypeId.FACTORY).ready.idle:
+            # Reactor allows us to build two at a time
+            if self.can_afford(UnitTypeId.CYCLONE):
+                factory.train(UnitTypeId.CYCLONE)
+
+        # Saturate gas
+        for refinery in self.gas_buildings:
+            if refinery.assigned_harvesters < refinery.ideal_harvesters:
+                worker: Units = self.workers.closer_than(10, refinery)
+                if worker:
+                    worker.random.gather(refinery)
+
+        for scv in self.workers.idle:
+            scv.gather(self.mineral_field.closest_to(cc))
 
 
 def main():
     sc2.run_game(
         sc2.maps.get("(2)CatalystLE"),
-        [Bot(Race.Terran, MyBot()), Computer(Race.Random, Difficulty.Easy)],
+        [
+            # Human(Race.Terran),
+            Bot(Race.Terran, CyclonePush()),
+            Computer(Race.Random, Difficulty.Easy),
+        ],
         realtime=False,
     )
 
