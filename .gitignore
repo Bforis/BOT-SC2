@@ -6235,3 +6235,4 @@ venv/Scripts/wsdump.py
 .idea/misc.xml
 .idea/modules.xml
 .idea/SC2BOT.iml
+*.pyc
