@@ -5,6 +5,7 @@ from sc2.ids.unit_typeid import UnitTypeId
 from sc2.unit import Unit
 from sc2.units import Units
 from sc2.position import Point2
+from sc2.constants import *
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "../.."))
 
@@ -17,15 +18,6 @@ async def BaseBuildOrder(self):
     else:
         # Otherwise, grab the first command center from the list of command centers
         cc: Unit = CCs.first
-
-    # If we have supply depots (careful, lowered supply depots have a different UnitTypeId: UnitTypeId.SUPPLYDEPOTLOWERED)
-    if self.structures(UnitTypeId.SUPPLYDEPOT):
-        # If we have no barracks
-        if not self.structures(UnitTypeId.BARRACKS):
-            # If we can afford barracks
-            if self.can_afford(UnitTypeId.BARRACKS):
-                # Near same command as above with the depot
-                await self.build(UnitTypeId.BARRACKS, near=cc.position.towards(self.game_info.map_center, 8))
 
         # If we have at least one barracks that is completed, build factory
         if self.structures(UnitTypeId.BARRACKS).ready:
@@ -51,3 +43,29 @@ async def BaseBuildOrder(self):
                     worker.build_gas(vg)
                     # Only issue one build geysir command per frame
                     break
+
+        # Build ADDONS TECH
+
+        sp: Unit
+        for sp in self.structures(UnitTypeId.BARRACKS).ready.idle:
+            if not sp.has_add_on:
+                if self.can_afford(UnitTypeId.TECHREACTOR):
+                    sp.build(UnitTypeId.BARRACKSTECHREACTOR)
+            else:
+                sp(AbilityId.LIFT)
+        for sp in self.structures(UnitTypeId.FACTORY).ready.idle:
+            if not sp.has_add_on:
+                if self.can_afford(UnitTypeId.TECHLAB):
+                    sp.build(UnitTypeId.FACTORYTECHLAB)
+            else:
+                sp(AbilityId.LIFT)
+
+        # Build ARMY
+
+        """for gw in self.units(UnitTypeId.BARRACKS).ready.idle:
+            if self.can_afford(UnitTypeId.MARINE) and self.supply_left > 0:
+                await self.do(gw.train(UnitTypeId.MARINE))
+
+        for gw in self.units(UnitTypeId.FACTORY).ready.idle:
+            if self.can_afford(UnitTypeId.WIDOWMINE) and self.supply_left > 0:
+                await self.do(gw.train(UnitTypeId.WIDOWMINE))"""

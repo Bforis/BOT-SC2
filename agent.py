@@ -51,6 +51,7 @@ class MyBot(sc2.BotAI):
                 and cc.is_idle
         ):
             cc.train(UnitTypeId.SCV)
+
         """
         # Build supply depots if we are low on supply, do not construct more than 2 at a time
         elif self.supply_left < 3:
@@ -70,7 +71,7 @@ class MyBot(sc2.BotAI):
 
         # BUILD ORDERS
         await Build_Wall(self)
-        # await BaseBuildOrder(self)
+        await BaseBuildOrder(self)
 
 
 def main():
