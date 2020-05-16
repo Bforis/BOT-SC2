@@ -4,17 +4,23 @@ import sys
 import sc2
 from sc2 import Race, Difficulty
 from sc2.player import Bot, Computer
-from sc2.ids.unit_typeid import UnitTypeId
 from sc2.unit import Unit
 from sc2.units import Units
 from sc2.position import Point2
 from build.base_build import BaseBuildOrder
 from build.wall import Build_Wall
+from build.expand import Expand
+from sc2.constants import *
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "../.."))
 
 
 class MyBot(sc2.BotAI):
+    def __init__(self):
+        super().__init__()
+        self.ITERATIONS_PER_MINUTE = 165
+        self.MAX_WORKERS = 60
+
     def select_target(self) -> Point2:
         # Pick a random enemy structure's position
         targets = self.enemy_structures
@@ -49,6 +55,7 @@ class MyBot(sc2.BotAI):
                 self.can_afford(UnitTypeId.SCV)
                 and self.supply_workers + self.already_pending(UnitTypeId.SCV) < 22
                 and cc.is_idle
+                < self.MAX_WORKERS
         ):
             cc.train(UnitTypeId.SCV)
 
@@ -69,8 +76,16 @@ class MyBot(sc2.BotAI):
                 if worker:
                     worker.random.gather(refinery)
 
+            # Manage orbital energy and drop mules
+        for oc in self.townhalls(UnitTypeId.ORBITALCOMMAND).filter(lambda x: x.energy >= 50):
+            mfs: Units = self.mineral_field.closer_than(10, oc)
+            if mfs:
+                mf: Unit = max(mfs, key=lambda x: x.mineral_contents)
+                oc(AbilityId.CALLDOWNMULE_CALLDOWNMULE, mf)
+
         # BUILD ORDERS
         await Build_Wall(self)
+        await Expand(self)
         await BaseBuildOrder(self)
 
 

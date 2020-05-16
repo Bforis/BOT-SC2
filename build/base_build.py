@@ -49,23 +49,31 @@ async def BaseBuildOrder(self):
         sp: Unit
         for sp in self.structures(UnitTypeId.BARRACKS).ready.idle:
             if not sp.has_add_on:
-                if self.can_afford(UnitTypeId.TECHREACTOR):
-                    sp.build(UnitTypeId.BARRACKSTECHREACTOR)
-            else:
-                sp(AbilityId.LIFT)
+                if self.can_afford(UnitTypeId.BARRACKSREACTOR):
+                    sp.build(UnitTypeId.BARRACKSREACTOR)
         for sp in self.structures(UnitTypeId.FACTORY).ready.idle:
             if not sp.has_add_on:
                 if self.can_afford(UnitTypeId.TECHLAB):
                     sp.build(UnitTypeId.FACTORYTECHLAB)
-            else:
-                sp(AbilityId.LIFT)
+        # Morph commandcenter to orbitalcommand
+        # Check if tech requirement for orbital is complete (e.g. you need a barracks to be able to morph an orbital)
+        orbital_tech_requirement: float = self.tech_requirement_progress(UnitTypeId.ORBITALCOMMAND)
+        if orbital_tech_requirement == 1:
+            # Loop over all idle command centers (CCs that are not building SCVs or morphing to orbital)
+            for cc in self.townhalls(UnitTypeId.COMMANDCENTER).idle:
+                # Check if we have 150 minerals; this used to be an issue when the API returned 550 (value) of the orbital, but we only wanted the 150 minerals morph cost
+                if self.can_afford(UnitTypeId.ORBITALCOMMAND):
+                    cc(AbilityId.UPGRADETOORBITAL_ORBITALCOMMAND)
 
         # Build ARMY
+        # Make reapers if we can afford them and we have supply remaining
+        if self.supply_left > 0:
+            # Loop through all idle barracks
+            for rax in self.structures(UnitTypeId.BARRACKS).idle:
+                if self.can_afford(UnitTypeId.MARINE):
+                    rax.train(UnitTypeId.MARINE)
 
-        """for gw in self.units(UnitTypeId.BARRACKS).ready.idle:
-            if self.can_afford(UnitTypeId.MARINE) and self.supply_left > 0:
-                await self.do(gw.train(UnitTypeId.MARINE))
-
-        for gw in self.units(UnitTypeId.FACTORY).ready.idle:
-            if self.can_afford(UnitTypeId.WIDOWMINE) and self.supply_left > 0:
-                await self.do(gw.train(UnitTypeId.WIDOWMINE))"""
+            # Loop through all idle barracks
+            for facto in self.structures(UnitTypeId.FACTORY).idle:
+                if self.can_afford(UnitTypeId.WIDOWMINE):
+                    facto.train(UnitTypeId.WIDOWMINE)
