@@ -10,6 +10,7 @@ from sc2.position import Point2
 from build.base_build import BaseBuildOrder
 from build.wall import Build_Wall
 from build.expand import Expand
+from build.test_build import TestBuild
 from sc2.constants import *
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "../.."))
@@ -40,6 +41,7 @@ class MyBot(sc2.BotAI):
         return self.mineral_field.random.position
 
     async def on_step(self, iteration):
+        self.iteration = iteration
         CCs: Units = self.townhalls(UnitTypeId.COMMANDCENTER)
         # If no command center exists, attack-move with all workers and cyclones
         if not CCs:
@@ -53,9 +55,8 @@ class MyBot(sc2.BotAI):
         # Check if we can afford them (by minerals and by supply)
         if (
                 self.can_afford(UnitTypeId.SCV)
-                and self.supply_workers + self.already_pending(UnitTypeId.SCV) < 22
+                and self.supply_workers + (self.already_pending(UnitTypeId.SCV) < self.MAX_WORKERS)
                 and cc.is_idle
-                < self.MAX_WORKERS
         ):
             cc.train(UnitTypeId.SCV)
 
@@ -85,8 +86,10 @@ class MyBot(sc2.BotAI):
 
         # BUILD ORDERS
         await Build_Wall(self)
-        await Expand(self)
-        await BaseBuildOrder(self)
+        # await BaseBuildOrder(self)
+        if self.units(UnitTypeId.COMMANDCENTER).amount < (self.iteration / self.ITERATIONS_PER_MINUTE):
+            await Expand(self)
+        await TestBuild(self, iteration)
 
 
 def main():
@@ -97,7 +100,7 @@ def main():
             Bot(Race.Terran, MyBot()),
             Computer(Race.Random, Difficulty.Easy),
         ],
-        realtime=False,
+        realtime=True,
     )
 
 

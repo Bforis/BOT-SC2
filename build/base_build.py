@@ -19,30 +19,47 @@ async def BaseBuildOrder(self):
         # Otherwise, grab the first command center from the list of command centers
         cc: Unit = CCs.first
 
-        # If we have at least one barracks that is completed, build factory
+        # BUILD MORE BARRACKS
+
+        if self.structures(UnitTypeId.SUPPLYDEPOT).ready:
+            if self.structures(UnitTypeId.BARRACKS).amount == 1 and not self.already_pending(UnitTypeId.BARRACKS):
+                if self.can_afford(UnitTypeId.BARRACKS):
+                    position: Point2 = cc.position.towards_with_random_angle(self.game_info.map_center, 16)
+                    await self.build(UnitTypeId.BARRACKS, near=position)
+            elif len(self.units(UnitTypeId.BARRACKS)) < ((self.iteration / self.ITERATIONS_PER_MINUTE) / 2):
+                if self.can_afford(UnitTypeId.BARRACKS) and not self.already_pending(UnitTypeId.BARRACKS):
+                    position: Point2 = cc.position.towards_with_random_angle(self.game_info.map_center, 16)
+                    await self.build(UnitTypeId.BARRACKS, near=position)
+
+        # If we have at least one barracks that is completed, BUILD FACTORY AND MORE
         if self.structures(UnitTypeId.BARRACKS).ready:
             if self.structures(UnitTypeId.FACTORY).amount < 1 and not self.already_pending(UnitTypeId.FACTORY):
                 if self.can_afford(UnitTypeId.FACTORY):
                     position: Point2 = cc.position.towards_with_random_angle(self.game_info.map_center, 16)
                     await self.build(UnitTypeId.FACTORY, near=position)
-            # If we have a barracks (complete or under construction) and less than 2 gas structures (here: refineries)
-        elif self.structures(UnitTypeId.BARRACKS) and self.gas_buildings.amount < 2:
-            if self.can_afford(UnitTypeId.REFINERY):
-                # All the vespene geysirs nearby, including ones with a refinery on top of it
-                vgs = self.vespene_geyser.closer_than(10, cc)
-                for vg in vgs:
-                    if self.gas_buildings.filter(lambda unit: unit.distance_to(vg) < 1):
-                        continue
-                    # Select a worker closest to the vespene geysir
-                    worker: Unit = self.select_build_worker(vg)
-                    # Worker can be none in cases where all workers are dead
-                    # or 'select_build_worker' function only selects from workers which carry no minerals
-                    if worker is None:
-                        continue
-                    # Issue the build command to the worker, important: vg has to be a Unit, not a position
-                    worker.build_gas(vg)
-                    # Only issue one build geysir command per frame
-                    break
+            elif len(self.units(UnitTypeId.FACTORY)) < ((self.iteration / self.ITERATIONS_PER_MINUTE) / 2):
+                if self.can_afford(UnitTypeId.FACTORY) and not self.already_pending(UnitTypeId.FACTORY):
+                    position: Point2 = cc.position.towards_with_random_angle(self.game_info.map_center, 16)
+                    await self.build(UnitTypeId.FACTORY, near=position)
+
+        for cc in self.units(UnitTypeId.COMMANDCENTER):   # If we have a barracks (complete or under construction) and less than 2 gas structures (here: REFINERIES)
+            if self.structures(UnitTypeId.BARRACKS) and self.gas_buildings.amount < 2:
+                if self.can_afford(UnitTypeId.REFINERY):
+                    # All the vespene geysirs nearby, including ones with a refinery on top of it
+                    vgs = self.vespene_geyser.closer_than(10, cc)
+                    for vg in vgs:
+                        if self.gas_buildings.filter(lambda unit: unit.distance_to(vg) < 1):
+                            continue
+                        # Select a worker closest to the vespene geysir
+                        worker: Unit = self.select_build_worker(vg)
+                        # Worker can be none in cases where all workers are dead
+                        # or 'select_build_worker' function only selects from workers which carry no minerals
+                        if worker is None:
+                            continue
+                        # Issue the build command to the worker, important: vg has to be a Unit, not a position
+                        worker.build_gas(vg)
+                        # Only issue one build geysir command per frame
+                        break
 
         # Build ADDONS TECH
 

@@ -14,8 +14,7 @@ async def Expand(self):
     ccs: Units = self.townhalls(UnitTypeId.COMMANDCENTER)
     # Expand if we can afford (400 minerals) and have less than 2 bases
     if (
-            1 <= self.townhalls.amount < 2
-            and self.already_pending(UnitTypeId.COMMANDCENTER) == 0
+            self.already_pending(UnitTypeId.COMMANDCENTER) == 0
             and self.can_afford(UnitTypeId.COMMANDCENTER)
     ):
         # get_next_expansion returns the position of the next possible expansion location where you can place a command center
