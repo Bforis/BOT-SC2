@@ -10,7 +10,6 @@ from sc2.position import Point2
 from build.base_build import BaseBuildOrder
 from build.wall import Build_Wall
 from build.expand import Expand
-from build.test_build import TestBuild
 from sc2.constants import *
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "../.."))
@@ -51,24 +50,25 @@ class MyBot(sc2.BotAI):
             # Otherwise, grab the first command center from the list of command centers
             cc: Unit = CCs.first
 
-        # While we have less than 22 workers: build more
         # Check if we can afford them (by minerals and by supply)
-        if (
-                self.can_afford(UnitTypeId.SCV)
-                and self.supply_workers + (self.already_pending(UnitTypeId.SCV) < self.MAX_WORKERS)
-                and cc.is_idle
-        ):
-            cc.train(UnitTypeId.SCV)
+        for cc in CCs:
+            if (
+                    self.can_afford(UnitTypeId.SCV)
+                    and (self.supply_workers < self.MAX_WORKERS) + self.already_pending(UnitTypeId.SCV)
+                    and cc.is_idle
+            ):
+                cc.train(UnitTypeId.SCV)
 
         """
         # Build supply depots if we are low on supply, do not construct more than 2 at a time
-        elif self.supply_left < 3:
+        if self.supply_left < 5:
             if self.can_afford(UnitTypeId.SUPPLYDEPOT) and self.already_pending(UnitTypeId.SUPPLYDEPOT) < 2:
                 # This picks a near-random worker to build a depot at location
                 # 'from command center towards game center, distance 8'
                 await self.build(UnitTypeId.SUPPLYDEPOT, near=cc.position.towards(self.game_info.map_center, 8))
         for scv in self.workers.idle:
-            scv.gather(self.mineral_field.closest_to(cc))"""
+            scv.gather(self.mineral_field.closest_to(cc))
+        """
 
         # Saturate gas
         for refinery in self.gas_buildings:
@@ -86,10 +86,9 @@ class MyBot(sc2.BotAI):
 
         # BUILD ORDERS
         await Build_Wall(self)
-        # await BaseBuildOrder(self)
+        await BaseBuildOrder(self)
         if self.units(UnitTypeId.COMMANDCENTER).amount < (self.iteration / self.ITERATIONS_PER_MINUTE):
             await Expand(self)
-        await TestBuild(self, iteration)
 
 
 def main():
@@ -98,9 +97,9 @@ def main():
         [
             # Human(Race.Terran),
             Bot(Race.Terran, MyBot()),
-            Computer(Race.Random, Difficulty.Easy),
+            Computer(Race.Random, Difficulty.Hard),
         ],
-        realtime=True,
+        realtime=False,
     )
 
 
