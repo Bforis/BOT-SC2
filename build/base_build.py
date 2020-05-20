@@ -1,11 +1,10 @@
 import os
 import sys
-import sc2
-from sc2.ids.unit_typeid import UnitTypeId
+
+from sc2.constants import *
+from sc2.position import Point2
 from sc2.unit import Unit
 from sc2.units import Units
-from sc2.position import Point2
-from sc2.constants import *
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "../.."))
 
@@ -22,28 +21,33 @@ async def BaseBuildOrder(self):
     # BUILD MORE BARRACKS
 
     if self.structures(UnitTypeId.SUPPLYDEPOT).ready:
-        """if self.structures(UnitTypeId.BARRACKS).amount == 1 and not self.already_pending(UnitTypeId.BARRACKS):
+        if self.structures(UnitTypeId.BARRACKS).amount == 0 and not self.already_pending(UnitTypeId.BARRACKS):
             if self.can_afford(UnitTypeId.BARRACKS):
                 position: Point2 = cc.position.towards_with_random_angle(self.game_info.map_center, 16)
-                await self.build(UnitTypeId.BARRACKS, near=position)"""
+                await self.build(UnitTypeId.BARRACKS, near=position)
         if len(self.units(UnitTypeId.BARRACKS)) < ((self.iteration / self.ITERATIONS_PER_MINUTE) / 2):
             if self.can_afford(UnitTypeId.BARRACKS) and not self.already_pending(UnitTypeId.BARRACKS):
                 position: Point2 = cc.position.towards_with_random_angle(self.game_info.map_center, 16)
                 await self.build(UnitTypeId.BARRACKS, near=position)
 
     # If we have at least one barracks that is completed, BUILD FACTORY AND MORE
-    """ if self.structures(UnitTypeId.BARRACKS).ready:
+    if self.structures(UnitTypeId.BARRACKS).ready:
         if self.structures(UnitTypeId.FACTORY).amount < 1 and not self.already_pending(UnitTypeId.FACTORY):
             if self.can_afford(UnitTypeId.FACTORY):
                 position: Point2 = cc.position.towards_with_random_angle(self.game_info.map_center, 16)
                 await self.build(UnitTypeId.FACTORY, near=position)
-        if len(self.units(UnitTypeId.FACTORY)) < (self.iteration / self.ITERATIONS_PER_MINUTE):
+        """if len(self.units(UnitTypeId.FACTORY)) < (self.iteration / self.ITERATIONS_PER_MINUTE):
             if self.can_afford(UnitTypeId.FACTORY) and not self.already_pending(UnitTypeId.FACTORY):
                 position: Point2 = cc.position.towards_with_random_angle(self.game_info.map_center, 16)
                 await self.build(UnitTypeId.FACTORY, near=position)"""
+    if self.structures(UnitTypeId.FACTORY).ready:
+        if self.structures(UnitTypeId.STARPORT).amount < 1 and not self.already_pending(UnitTypeId.STARPORT):
+            if self.can_afford(UnitTypeId.STARPORT):
+                position: Point2 = cc.position.towards_with_random_angle(self.game_info.map_center, 16)
+                await self.build(UnitTypeId.STARPORT, near=position)
 
     # If we have a barracks (complete or under construction) and less than 2 gas structures (here: REFINERIES)
-    if self.structures(UnitTypeId.BARRACKS) and self.gas_buildings.amount < 6:
+    if self.structures(UnitTypeId.BARRACKS) and self.gas_buildings.amount < 3:
         if self.can_afford(UnitTypeId.REFINERY):
             # All the vespene geysirs nearby, including ones with a refinery on top of it
             for cc in CCs:
@@ -77,7 +81,7 @@ async def BaseBuildOrder(self):
         if not sp.has_add_on:
             if self.can_afford(UnitTypeId.TECHLAB):
                 sp.build(UnitTypeId.FACTORYTECHLAB)
-    for sp in self.structures(UnitTypeId.STARPORTREACTOR).ready.idle:
+    for sp in self.structures(UnitTypeId.STARPORT).ready.idle:
         if not sp.has_add_on:
             if self.can_afford(UnitTypeId.STARPORTREACTOR):
                 sp.build(UnitTypeId.STARPORTREACTOR)
@@ -109,18 +113,19 @@ async def BaseBuildOrder(self):
         for starp in self.structures(UnitTypeId.STARPORT).idle:
             if self.can_afford(UnitTypeId.MEDIVAC):
                 starp.train(UnitTypeId.MEDIVAC)
-            if self.can_afford(UnitTypeId.MEDIVAC) and Unit.has_add_on:
-                starp.train(UnitTypeId.MEDIVAC) * 2
+                if Unit.has_add_on:
+                    starp.train(UnitTypeId.MEDIVAC) * 2
 
     # ATTACK
     # send them to their death
     marines: Units = self.units(UnitTypeId.MARINE).idle
     cyclones: Units = self.units(UnitTypeId.CYCLONE).idle
     medivacs: Units = self.units(UnitTypeId.MEDIVAC).idle
-    if marines.amount > 15:
+    if marines.amount > 15 and medivacs.amount > 2:
         target: Point2 = self.enemy_structures.random_or(self.enemy_start_locations[0]).position
         for marine in marines:
             marine.attack(target)
-
+            for medivac in medivacs:
+                medivac.move(marine)
         for cyclone in cyclones:
             cyclone.attack(target)

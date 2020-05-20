@@ -58,22 +58,3 @@ async def Build_Wall(self):
         if workers and barracks_placement_position:  # if workers were found
             worker: Unit = workers.random
             worker.build(UnitTypeId.BARRACKS, barracks_placement_position)
-
-    # Build refinery
-    elif self.structures(UnitTypeId.BARRACKS) and self.gas_buildings.amount < 1:
-        if self.can_afford(UnitTypeId.REFINERY):
-            # All the vespene geysirs nearby, including ones with a refinery on top of it
-            vgs = self.vespene_geyser.closer_than(10, cc)
-            for vg in vgs:
-                if self.gas_buildings.filter(lambda unit: unit.distance_to(vg) < 1):
-                    continue
-                # Select a worker closest to the vespene geysir
-                worker: Unit = self.select_build_worker(vg)
-                # Worker can be none in cases where all workers are dead
-                # or 'select_build_worker' function only selects from workers which carry no minerals
-                if worker is None:
-                    continue
-                # Issue the build command to the worker, important: vg has to be a Unit, not a position
-                worker.build_gas(vg)
-                # Only issue one build geysir command per frame
-                break

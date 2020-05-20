@@ -21,7 +21,7 @@ class MyBot(sc2.BotAI):
         self.ITERATIONS_PER_MINUTE = 165
         self.MAX_WORKERS = 60
 
-    def select_target(self) -> Point2:
+    """def select_target(self) -> Point2:
         # Pick a random enemy structure's position
         targets = self.enemy_structures
         if targets:
@@ -37,12 +37,19 @@ class MyBot(sc2.BotAI):
             return self.enemy_start_locations[0]
 
         # Pick a random mineral field on the map
-        return self.mineral_field.random.position
+        return self.mineral_field.random.position"""
 
     async def on_step(self, iteration):
         self.iteration = iteration
+
+        # BUILD ORDERS
+        await Build_Wall(self)
+        await BaseBuildOrder(self)
+        if self.units(UnitTypeId.COMMANDCENTER).amount < (self.iteration / self.ITERATIONS_PER_MINUTE):
+            await Expand(self)
+
         CCs: Units = self.townhalls(UnitTypeId.COMMANDCENTER)
-        # If no command center exists, attack-move with all workers and cyclones
+
         if not CCs:
             target = self.structures.random_or(self.enemy_start_locations[0]).position
             return
@@ -84,12 +91,6 @@ class MyBot(sc2.BotAI):
                 mf: Unit = max(mfs, key=lambda x: x.mineral_contents)
                 oc(AbilityId.CALLDOWNMULE_CALLDOWNMULE, mf)
 
-        # BUILD ORDERS
-        await Build_Wall(self)
-        await BaseBuildOrder(self)
-        if self.units(UnitTypeId.COMMANDCENTER).amount < (self.iteration / self.ITERATIONS_PER_MINUTE):
-            await Expand(self)
-
 
 def main():
     sc2.run_game(
@@ -99,7 +100,7 @@ def main():
             Bot(Race.Terran, MyBot()),
             Computer(Race.Random, Difficulty.Hard),
         ],
-        realtime=False,
+        realtime=True,
     )
 
 
