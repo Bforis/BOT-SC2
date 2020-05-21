@@ -61,7 +61,7 @@ async def BaseBuildOrder(self):
                     # or 'select_build_worker' function only selects from workers which carry no minerals
                     if worker is None:
                         continue
-                    # Issue the build command to the worker, important: vg has to be a Unit, not a position
+                    # Issue the build command to the worker, important: vg has to be a Uni t, not a position
                     worker.build_gas(vg)
                     # Only issue one build geysir command per frame
                     break
