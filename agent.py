@@ -19,7 +19,6 @@ class MyBot(sc2.BotAI):
     def __init__(self):
         super().__init__()
         self.ITERATIONS_PER_MINUTE = 165
-        self.MAX_WORKERS = 60
 
     """def select_target(self) -> Point2:
         # Pick a random enemy structure's position
@@ -45,10 +44,10 @@ class MyBot(sc2.BotAI):
         # BUILD ORDERS
         await Build_Wall(self)
         await BaseBuildOrder(self)
-        if self.units(UnitTypeId.COMMANDCENTER).amount < (self.iteration / self.ITERATIONS_PER_MINUTE):
-            await Expand(self)
+        await Expand(self)
 
         CCs: Units = self.townhalls(UnitTypeId.COMMANDCENTER)
+        OCs: Units = self.townhalls(UnitTypeId.ORBITALCOMMAND)
 
         if not CCs:
             target = self.structures.random_or(self.enemy_start_locations[0]).position
@@ -57,15 +56,20 @@ class MyBot(sc2.BotAI):
             # Otherwise, grab the first command center from the list of command centers
             cc: Unit = CCs.first
 
-        # Check if we can afford them (by minerals and by supply)
         for cc in CCs:
             if (
                     self.can_afford(UnitTypeId.SCV)
-                    and (self.supply_workers < self.MAX_WORKERS) + self.already_pending(UnitTypeId.SCV)
-                    and cc.is_idle
+                    and (self.supply_workers < cc.ideal_harvesters) and self.already_pending(UnitTypeId.SCV) == 0
             ):
                 cc.train(UnitTypeId.SCV)
-
+        if OCs:
+            for orbital in OCs:
+                if (
+                        self.can_afford(UnitTypeId.SCV)
+                        and (self.supply_workers < orbital.ideal_harvesters) and self.already_pending(
+                        UnitTypeId.SCV) == 0
+                ):
+                    orbital.train(UnitTypeId.SCV)
         """
         # Build supply depots if we are low on supply, do not construct more than 2 at a time
         if self.supply_left < 5:
@@ -100,7 +104,7 @@ def main():
             Bot(Race.Terran, MyBot()),
             Computer(Race.Random, Difficulty.Hard),
         ],
-        realtime=True,
+        realtime=False,
     )
 
 

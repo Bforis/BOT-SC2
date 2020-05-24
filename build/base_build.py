@@ -11,39 +11,41 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "../.."))
 
 async def BaseBuildOrder(self):
     CCs: Units = self.townhalls(UnitTypeId.COMMANDCENTER)
-    # If no command center exists, attack-move with all workers and cyclones
+    OCs: Units = self.townhalls(UnitTypeId.ORBITALCOMMAND)
     if not CCs:
         return
     else:
         # Otherwise, grab the first command center from the list of command centers
         cc: Unit = CCs.first
+    if not OCs:
+        position: Point2 = cc.position.towards_with_random_angle(self.game_info.map_center, 16)
+    else:
+        oc: Unit = OCs.first
+        position: Point2 = oc.position.towards_with_random_angle(self.game_info.map_center, 16)
+
+
 
     # BUILD MORE BARRACKS
 
     if self.structures(UnitTypeId.SUPPLYDEPOT).ready:
         if self.structures(UnitTypeId.BARRACKS).amount == 0 and not self.already_pending(UnitTypeId.BARRACKS):
             if self.can_afford(UnitTypeId.BARRACKS):
-                position: Point2 = cc.position.towards_with_random_angle(self.game_info.map_center, 16)
                 await self.build(UnitTypeId.BARRACKS, near=position)
         if len(self.units(UnitTypeId.BARRACKS)) < ((self.iteration / self.ITERATIONS_PER_MINUTE) / 2):
             if self.can_afford(UnitTypeId.BARRACKS) and not self.already_pending(UnitTypeId.BARRACKS):
-                position: Point2 = cc.position.towards_with_random_angle(self.game_info.map_center, 16)
                 await self.build(UnitTypeId.BARRACKS, near=position)
 
     # If we have at least one barracks that is completed, BUILD FACTORY AND MORE
     if self.structures(UnitTypeId.BARRACKS).ready:
         if self.structures(UnitTypeId.FACTORY).amount < 1 and not self.already_pending(UnitTypeId.FACTORY):
             if self.can_afford(UnitTypeId.FACTORY):
-                position: Point2 = cc.position.towards_with_random_angle(self.game_info.map_center, 16)
                 await self.build(UnitTypeId.FACTORY, near=position)
         """if len(self.units(UnitTypeId.FACTORY)) < (self.iteration / self.ITERATIONS_PER_MINUTE):
             if self.can_afford(UnitTypeId.FACTORY) and not self.already_pending(UnitTypeId.FACTORY):
-                position: Point2 = cc.position.towards_with_random_angle(self.game_info.map_center, 16)
                 await self.build(UnitTypeId.FACTORY, near=position)"""
     if self.structures(UnitTypeId.FACTORY).ready:
         if self.structures(UnitTypeId.STARPORT).amount < 1 and not self.already_pending(UnitTypeId.STARPORT):
             if self.can_afford(UnitTypeId.STARPORT):
-                position: Point2 = cc.position.towards_with_random_angle(self.game_info.map_center, 16)
                 await self.build(UnitTypeId.STARPORT, near=position)
 
     # If we have a barracks (complete or under construction) and less than 2 gas structures (here: REFINERIES)
@@ -95,6 +97,16 @@ async def BaseBuildOrder(self):
             # Check if we have 150 minerals; this used to be an issue when the API returned 550 (value) of the orbital, but we only wanted the 150 minerals morph cost
             if self.can_afford(UnitTypeId.ORBITALCOMMAND):
                 cc(AbilityId.UPGRADETOORBITAL_ORBITALCOMMAND)
+
+    # BUILD MISSILE TURRET
+    for cc in self.townhalls(UnitTypeId.COMMANDCENTER).ready:
+        if self.structures(UnitTypeId.FACTORY).amount > 0 and self.structures(UnitTypeId.MISSILETURRET).ready.amount < 2:
+            if self.can_afford(UnitTypeId.MISSILETURRET) and self.already_pending(UnitTypeId.MISSILETURRET) < 2:
+                await self.build(UnitTypeId.MISSILETURRET, near=cc.position.towards(self.game_info.map_center, -4))
+    for oc in self.townhalls(UnitTypeId.ORBITALCOMMAND).ready:
+        if self.structures(UnitTypeId.FACTORY).amount > 0 and self.structures(UnitTypeId.MISSILETURRET).ready.amount < 2:
+            if self.can_afford(UnitTypeId.MISSILETURRET) and self.already_pending(UnitTypeId.MISSILETURRET) < 2:
+                await self.build(UnitTypeId.MISSILETURRET, near=oc.position.towards(self.game_info.map_center, -4))
 
     # Build ARMY
     # Make reapers if we can afford them and we have supply remaining
