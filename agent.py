@@ -46,8 +46,7 @@ class MyBot(sc2.BotAI):
         await BaseBuildOrder(self)
         await Expand(self)
 
-        CCs: Units = self.townhalls(UnitTypeId.COMMANDCENTER)
-        OCs: Units = self.townhalls(UnitTypeId.ORBITALCOMMAND)
+        CCs: Units = self.townhalls
 
         if not CCs:
             target = self.structures.random_or(self.enemy_start_locations[0]).position
@@ -56,20 +55,6 @@ class MyBot(sc2.BotAI):
             # Otherwise, grab the first command center from the list of command centers
             cc: Unit = CCs.first
 
-        for cc in CCs:
-            if (
-                    self.can_afford(UnitTypeId.SCV)
-                    and (self.supply_workers < cc.ideal_harvesters) and self.already_pending(UnitTypeId.SCV) == 0
-            ):
-                cc.train(UnitTypeId.SCV)
-        if OCs:
-            for orbital in OCs:
-                if (
-                        self.can_afford(UnitTypeId.SCV)
-                        and (self.supply_workers < orbital.ideal_harvesters) and self.already_pending(
-                        UnitTypeId.SCV) == 0
-                ):
-                    orbital.train(UnitTypeId.SCV)
         """
         # Build supply depots if we are low on supply, do not construct more than 2 at a time
         if self.supply_left < 5:
@@ -80,6 +65,9 @@ class MyBot(sc2.BotAI):
         for scv in self.workers.idle:
             scv.gather(self.mineral_field.closest_to(cc))
         """
+
+        for scv in self.workers.idle:
+            scv.gather(self.mineral_field.closest_to(cc))
 
         # Saturate gas
         for refinery in self.gas_buildings:

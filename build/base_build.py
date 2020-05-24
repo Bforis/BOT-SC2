@@ -10,20 +10,19 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "../.."))
 
 
 async def BaseBuildOrder(self):
-    CCs: Units = self.townhalls(UnitTypeId.COMMANDCENTER)
-    OCs: Units = self.townhalls(UnitTypeId.ORBITALCOMMAND)
+    CCs: Units = self.townhalls
     if not CCs:
         return
     else:
         # Otherwise, grab the first command center from the list of command centers
         cc: Unit = CCs.first
-    if not OCs:
-        position: Point2 = cc.position.towards_with_random_angle(self.game_info.map_center, 16)
-    else:
-        oc: Unit = OCs.first
-        position: Point2 = oc.position.towards_with_random_angle(self.game_info.map_center, 16)
+    position: Point2 = cc.position.towards_with_random_angle(self.game_info.map_center, 16)
 
+    # TRAIN VCS
 
+    for cc in CCs:
+        if self.can_afford(UnitTypeId.SCV) and (cc.assigned_harvesters < cc.ideal_harvesters) and cc.is_idle:
+            cc.train(UnitTypeId.SCV)
 
     # BUILD MORE BARRACKS
 
@@ -99,14 +98,10 @@ async def BaseBuildOrder(self):
                 cc(AbilityId.UPGRADETOORBITAL_ORBITALCOMMAND)
 
     # BUILD MISSILE TURRET
-    for cc in self.townhalls(UnitTypeId.COMMANDCENTER).ready:
+    for cc in self.townhalls.ready:
         if self.structures(UnitTypeId.FACTORY).amount > 0 and self.structures(UnitTypeId.MISSILETURRET).ready.amount < 2:
             if self.can_afford(UnitTypeId.MISSILETURRET) and self.already_pending(UnitTypeId.MISSILETURRET) < 2:
                 await self.build(UnitTypeId.MISSILETURRET, near=cc.position.towards(self.game_info.map_center, -4))
-    for oc in self.townhalls(UnitTypeId.ORBITALCOMMAND).ready:
-        if self.structures(UnitTypeId.FACTORY).amount > 0 and self.structures(UnitTypeId.MISSILETURRET).ready.amount < 2:
-            if self.can_afford(UnitTypeId.MISSILETURRET) and self.already_pending(UnitTypeId.MISSILETURRET) < 2:
-                await self.build(UnitTypeId.MISSILETURRET, near=oc.position.towards(self.game_info.map_center, -4))
 
     # Build ARMY
     # Make reapers if we can afford them and we have supply remaining
