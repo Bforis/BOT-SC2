@@ -44,7 +44,10 @@ class MyBot(sc2.BotAI):
         # BUILD ORDERS
         await Build_Wall(self)
         await BaseBuildOrder(self)
-        await Expand(self)
+        if self.townhalls.amount < (
+                self.iteration / self.ITERATIONS_PER_MINUTE
+        ):
+            await Expand(self)
 
         CCs: Units = self.townhalls
 

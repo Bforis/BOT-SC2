@@ -30,7 +30,7 @@ async def BaseBuildOrder(self):
         if self.structures(UnitTypeId.BARRACKS).amount == 0 and not self.already_pending(UnitTypeId.BARRACKS):
             if self.can_afford(UnitTypeId.BARRACKS):
                 await self.build(UnitTypeId.BARRACKS, near=position)
-        if len(self.units(UnitTypeId.BARRACKS)) < ((self.iteration / self.ITERATIONS_PER_MINUTE) / 2):
+        if len(self.units(UnitTypeId.BARRACKS)) < (self.iteration / self.ITERATIONS_PER_MINUTE) and self.townhalls.amount > 1:
             if self.can_afford(UnitTypeId.BARRACKS) and not self.already_pending(UnitTypeId.BARRACKS):
                 await self.build(UnitTypeId.BARRACKS, near=position)
 
@@ -39,7 +39,7 @@ async def BaseBuildOrder(self):
         if self.structures(UnitTypeId.FACTORY).amount < 1 and not self.already_pending(UnitTypeId.FACTORY):
             if self.can_afford(UnitTypeId.FACTORY):
                 await self.build(UnitTypeId.FACTORY, near=position)
-        """if len(self.units(UnitTypeId.FACTORY)) < (self.iteration / self.ITERATIONS_PER_MINUTE):
+        """if len(self.units(UnitTypeId.FACTORY)) < (self.iteration / self.ITERATIONS_PER_MINUTE) and self.townhalls.amount > 1:
             if self.can_afford(UnitTypeId.FACTORY) and not self.already_pending(UnitTypeId.FACTORY):
                 await self.build(UnitTypeId.FACTORY, near=position)"""
     if self.structures(UnitTypeId.FACTORY).ready:
@@ -71,6 +71,9 @@ async def BaseBuildOrder(self):
     if self.supply_left < 5:
         if self.can_afford(UnitTypeId.SUPPLYDEPOT) and self.already_pending(UnitTypeId.SUPPLYDEPOT) < 2:
             await self.build(UnitTypeId.SUPPLYDEPOT, near=cc.position.towards(self.game_info.map_center, 8))
+            for depos in self.structures(UnitTypeId.SUPPLYDEPOT).ready:
+                depos(AbilityId.MORPH_SUPPLYDEPOT_LOWER)
+
 
     # Build ADDONS TECH
     sp: Unit
@@ -98,8 +101,14 @@ async def BaseBuildOrder(self):
                 cc(AbilityId.UPGRADETOORBITAL_ORBITALCOMMAND)
 
     # BUILD MISSILE TURRET
-    for cc in self.townhalls.ready:
+    for cc in self.townhalls(UnitTypeId.COMMANDCENTER).ready:
         if self.structures(UnitTypeId.FACTORY).amount > 0 and self.structures(UnitTypeId.MISSILETURRET).ready.amount < 2:
+            if self.can_afford(UnitTypeId.MISSILETURRET) and self.already_pending(UnitTypeId.MISSILETURRET) < 2:
+                await self.build(UnitTypeId.MISSILETURRET, near=cc.position.towards(self.game_info.map_center, -4))
+
+    for cc in self.townhalls(UnitTypeId.ORBITALCOMMAND).ready:
+        if self.structures(UnitTypeId.FACTORY).amount > 0 and self.structures(
+                UnitTypeId.MISSILETURRET).ready.amount < 2:
             if self.can_afford(UnitTypeId.MISSILETURRET) and self.already_pending(UnitTypeId.MISSILETURRET) < 2:
                 await self.build(UnitTypeId.MISSILETURRET, near=cc.position.towards(self.game_info.map_center, -4))
 
