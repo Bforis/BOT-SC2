@@ -1,5 +1,5 @@
 # BOT-SC2
-A simple Terran bot for StarCraft 2
+A stupid Terran bot for StarCraft 2
 
 using : 
 
