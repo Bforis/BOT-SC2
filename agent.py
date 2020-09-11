@@ -95,7 +95,7 @@ def main():
             Bot(Race.Terran, MyBot()),
             Computer(Race.Random, Difficulty.Hard),
         ],
-        realtime=False,
+        realtime=True,
     )
 
 
